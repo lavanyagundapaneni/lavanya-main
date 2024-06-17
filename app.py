@@ -10,19 +10,26 @@ app = Flask(__name__)
 # Load environment variables from .env file
 load_dotenv()
 
+# Fetch environment variables from .env file or directly set them
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_DEFAULT_REGION = os.getenv('AWS_DEFAULT_REGION', 'us-east-1')  # Default to us-east-1 if not set
+
 # Fetch environment variables from AWS Parameter Store
 try:
-    # Create a boto3 client for SSM
-    ssm = boto3.client('ssm', region_name=os.getenv('AWS_DEFAULT_REGION'))
+    ssm = boto3.client(
+        'ssm',
+        region_name=AWS_DEFAULT_REGION,
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+    )
     openai_api_key = ssm.get_parameter(Name='OPENAI_API_KEY', WithDecryption=True)['Parameter']['Value']
     secret_key = ssm.get_parameter(Name='SECRET_KEY', WithDecryption=True)['Parameter']['Value']
 except (NoCredentialsError, PartialCredentialsError) as e:
-    # Fallback to environment variables if AWS credentials are not found
     print(f"Credentials error: {e}")
     openai_api_key = os.getenv('OPENAI_API_KEY')
     secret_key = os.getenv('SECRET_KEY')
 
-# Set OpenAI API key and Flask secret key
 openai.api_key = openai_api_key
 app.secret_key = secret_key
 
